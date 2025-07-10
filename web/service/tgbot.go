@@ -698,7 +698,7 @@ func (t *Tgbot) answerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool
 				}
 				message_text, err := t.BuildInboundClientDataMessage(inbound.Remark, inbound.Protocol)
 
-				t.addClient(message.Chat.ID, message_text, messageId)
+				t.addClient(chatId, message_text, messageId)
 				t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.answers.successfulOperation"))
 			case "add_client_limit_traffic_in":
 				if len(dataArray) >= 2 {
