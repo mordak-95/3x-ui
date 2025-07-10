@@ -13,8 +13,25 @@ cur_dir=$(pwd)
 
 # Check if we're in the correct directory (should contain main.go and other source files)
 if [[ ! -f "main.go" ]] || [[ ! -f "go.mod" ]]; then
-    echo -e "${red}Error: ${plain} Please run this script from the 3x-ui source directory (where main.go is located)"
-    exit 1
+    echo -e "${yellow}Source files not found in current directory. Cloning repository...${plain}"
+    
+    # Clone the repository
+    cd /tmp
+    git clone https://github.com/mordak-95/3x-ui.git
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to clone repository${plain}"
+        exit 1
+    fi
+    
+    cd 3x-ui
+    
+    # Check if we're now in the correct directory
+    if [[ ! -f "main.go" ]] || [[ ! -f "go.mod" ]]; then
+        echo -e "${red}Error: Repository structure is invalid${plain}"
+        exit 1
+    fi
+    
+    echo -e "${green}Repository cloned successfully${plain}"
 fi
 
 # Check OS and set release variable
@@ -61,22 +78,22 @@ check_glibc_version
 install_base() {
     case "${release}" in
     ubuntu | debian | armbian)
-        apt-get update && apt-get install -y -q wget curl tar tzdata git golang-go
+        apt-get update && apt-get install -y -q wget curl tar tzdata git golang-go unzip
         ;;
     centos | rhel | almalinux | rocky | ol)
-        yum -y update && yum install -y -q wget curl tar tzdata git golang
+        yum -y update && yum install -y -q wget curl tar tzdata git golang unzip
         ;;
     fedora | amzn | virtuozzo)
-        dnf -y update && dnf install -y -q wget curl tar tzdata git golang
+        dnf -y update && dnf install -y -q wget curl tar tzdata git golang unzip
         ;;
     arch | manjaro | parch)
-        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata git go
+        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata git go unzip
         ;;
     opensuse-tumbleweed)
-        zypper refresh && zypper -q install -y wget curl tar timezone git go
+        zypper refresh && zypper -q install -y wget curl tar timezone git go unzip
         ;;
     *)
-        apt-get update && apt install -y -q wget curl tar tzdata git golang-go
+        apt-get update && apt install -y -q wget curl tar tzdata git golang-go unzip
         ;;
     esac
 }
@@ -188,7 +205,7 @@ build_and_install_x-ui() {
     # Download Xray binary (still need to download this as it's not part of the source)
     echo -e "${yellow}Downloading Xray binary...${plain}"
     xray_version="1.8.8"
-    wget -O /usr/local/x-ui/bin/xray-linux-$(arch) https://github.com/XTLS/Xray-core/releases/download/v${xray_version}/Xray-linux-$(arch).zip
+    wget -O /usr/local/x-ui/bin/xray-linux-$(arch).zip https://github.com/XTLS/Xray-core/releases/download/v${xray_version}/Xray-linux-$(arch).zip
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download Xray binary${plain}"
         exit 1
