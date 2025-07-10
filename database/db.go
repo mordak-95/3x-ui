@@ -1,12 +1,8 @@
 package database
 
 import (
-	"bytes"
 	"io"
-	"io/fs"
 	"log"
-	"os"
-	"path"
 	"slices"
 
 	"x-ui/config"
@@ -14,7 +10,7 @@ import (
 	"x-ui/util/crypto"
 	"x-ui/xray"
 
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -114,11 +110,8 @@ func isTableEmpty(tableName string) (bool, error) {
 }
 
 func InitDB(dbPath string) error {
-	dir := path.Dir(dbPath)
-	err := os.MkdirAll(dir, fs.ModePerm)
-	if err != nil {
-		return err
-	}
+	// For PostgreSQL, we use the connection string instead of file path
+	dsn := config.GetPostgreSQLDSN()
 
 	var gormLogger logger.Interface
 
@@ -131,7 +124,8 @@ func InitDB(dbPath string) error {
 	c := &gorm.Config{
 		Logger: gormLogger,
 	}
-	db, err = gorm.Open(sqlite.Open(dbPath), c)
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), c)
 	if err != nil {
 		return err
 	}
@@ -141,6 +135,9 @@ func InitDB(dbPath string) error {
 	}
 
 	isUsersEmpty, err := isTableEmpty("users")
+	if err != nil {
+		return err
+	}
 
 	if err := initUser(); err != nil {
 		return err
@@ -167,21 +164,15 @@ func IsNotFound(err error) bool {
 	return err == gorm.ErrRecordNotFound
 }
 
-func IsSQLiteDB(file io.ReaderAt) (bool, error) {
-	signature := []byte("SQLite format 3\x00")
-	buf := make([]byte, len(signature))
-	_, err := file.ReadAt(buf, 0)
-	if err != nil {
-		return false, err
-	}
-	return bytes.Equal(buf, signature), nil
+func IsPostgreSQLDB(file io.ReaderAt) (bool, error) {
+	// PostgreSQL doesn't have a simple file signature like SQLite
+	// This function is kept for compatibility but always returns false
+	// as PostgreSQL databases are not typically imported as files
+	return false, nil
 }
 
 func Checkpoint() error {
-	// Update WAL
-	err := db.Exec("PRAGMA wal_checkpoint;").Error
-	if err != nil {
-		return err
-	}
+	// PostgreSQL doesn't use WAL checkpoints like SQLite
+	// This function is kept for compatibility but does nothing
 	return nil
 }

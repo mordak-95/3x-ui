@@ -148,6 +148,12 @@ func (a *ServerController) getDb(c *gin.Context) {
 		return
 	}
 
+	// For PostgreSQL, we return an error message instead of a file
+	if db == nil {
+		jsonMsg(c, "Database export is not supported for PostgreSQL. Use pg_dump command instead.", nil)
+		return
+	}
+
 	filename := "x-ui.db"
 
 	if !isValidFilename(filename) {

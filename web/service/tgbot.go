@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"x-ui/config"
-	"x-ui/database"
 	"x-ui/database/model"
 	"x-ui/logger"
 	"x-ui/util/common"
@@ -699,7 +698,7 @@ func (t *Tgbot) answerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool
 				}
 				message_text, err := t.BuildInboundClientDataMessage(inbound.Remark, inbound.Protocol)
 
-				t.addClient(chatId, message_text, messageId)
+				t.addClient(message.Chat.ID, message_text, messageId)
 				t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.answers.successfulOperation"))
 			case "add_client_limit_traffic_in":
 				if len(dataArray) >= 2 {
@@ -1157,8 +1156,6 @@ func (t *Tgbot) answerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool
 						return
 					}
 				}
-				t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.answers.errorOperation"))
-				t.searchClient(chatId, email, callbackQuery.Message.GetMessageID())
 			case "clear_ips":
 				inlineKeyboard := tu.InlineKeyboard(
 					tu.InlineKeyboardRow(
@@ -2753,27 +2750,13 @@ func (t *Tgbot) sendBackup(chatId int64) {
 	output := t.I18nBot("tgbot.messages.backupTime", "Time=="+time.Now().Format("2006-01-02 15:04:05"))
 	t.SendMsgToTgbot(chatId, output)
 
-	// Update by manually trigger a checkpoint operation
-	err := database.Checkpoint()
-	if err != nil {
-		logger.Error("Error in trigger a checkpoint operation: ", err)
-	}
+	// For PostgreSQL, we can't directly backup the database file
+	// Instead, we'll send a message indicating that manual backup is required
+	backupMsg := "Database backup for PostgreSQL requires manual pg_dump command.\n" +
+		"Use: pg_dump -h <host> -p <port> -U <user> -d <database> > backup.sql"
+	t.SendMsgToTgbot(chatId, backupMsg)
 
-	file, err := os.Open(config.GetDBPath())
-	if err == nil {
-		document := tu.Document(
-			tu.ID(chatId),
-			tu.File(file),
-		)
-		_, err = bot.SendDocument(document)
-		if err != nil {
-			logger.Error("Error in uploading backup: ", err)
-		}
-	} else {
-		logger.Error("Error in opening db file for backup: ", err)
-	}
-
-	file, err = os.Open(xray.GetConfigPath())
+	file, err := os.Open(xray.GetConfigPath())
 	if err == nil {
 		document := tu.Document(
 			tu.ID(chatId),
