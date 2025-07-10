@@ -204,7 +204,7 @@ build_and_install_x-ui() {
 
     # Download Xray binary (still need to download this as it's not part of the source)
     echo -e "${yellow}Downloading Xray binary...${plain}"
-    xray_version="1.8.8"
+    xray_version="1.8.7"
     wget -O /usr/local/x-ui/bin/xray-linux-$(arch).zip https://github.com/XTLS/Xray-core/releases/download/v${xray_version}/Xray-linux-$(arch).zip
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download Xray binary${plain}"
