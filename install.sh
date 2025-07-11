@@ -11,29 +11,6 @@ cur_dir=$(pwd)
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
 
-# Check if we're in the correct directory (should contain main.go and other source files)
-if [[ ! -f "main.go" ]] || [[ ! -f "go.mod" ]]; then
-    echo -e "${yellow}Source files not found in current directory. Cloning repository...${plain}"
-    
-    # Clone the repository
-    cd /tmp
-    git clone https://github.com/mordak-95/3x-ui.git
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to clone repository${plain}"
-        exit 1
-    fi
-    
-    cd 3x-ui
-    
-    # Check if we're now in the correct directory
-    if [[ ! -f "main.go" ]] || [[ ! -f "go.mod" ]]; then
-        echo -e "${red}Error: Repository structure is invalid${plain}"
-        exit 1
-    fi
-    
-    echo -e "${green}Repository cloned successfully${plain}"
-fi
-
 # Check OS and set release variable
 if [[ -f /etc/os-release ]]; then
     source /etc/os-release
@@ -78,22 +55,22 @@ check_glibc_version
 install_base() {
     case "${release}" in
     ubuntu | debian | armbian)
-        apt-get update && apt-get install -y -q wget curl tar tzdata git golang-go unzip
+        apt-get update && apt-get install -y -q wget curl tar tzdata
         ;;
     centos | rhel | almalinux | rocky | ol)
-        yum -y update && yum install -y -q wget curl tar tzdata git golang unzip
+        yum -y update && yum install -y -q wget curl tar tzdata
         ;;
     fedora | amzn | virtuozzo)
-        dnf -y update && dnf install -y -q wget curl tar tzdata git golang unzip
+        dnf -y update && dnf install -y -q wget curl tar tzdata
         ;;
     arch | manjaro | parch)
-        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata git go unzip
+        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata
         ;;
     opensuse-tumbleweed)
-        zypper refresh && zypper -q install -y wget curl tar timezone git go unzip
+        zypper refresh && zypper -q install -y wget curl tar timezone
         ;;
     *)
-        apt-get update && apt install -y -q wget curl tar tzdata git golang-go unzip
+        apt-get update && apt install -y -q wget curl tar tzdata
         ;;
     esac
 }
@@ -164,81 +141,67 @@ config_after_install() {
     /usr/local/x-ui/x-ui migrate
 }
 
-build_and_install_x-ui() {
-    echo -e "${green}Building x-ui from source...${plain}"
-    
-    # Check if Go is installed
-    if ! command -v go &> /dev/null; then
-        echo -e "${red}Error: Go is not installed. Please install Go first.${plain}"
-        exit 1
+install_x-ui() {
+    cd /usr/local/
+
+    if [ $# == 0 ]; then
+        tag_version=$(curl -Ls "https://api.github.com/repos/mordak-95/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
+            exit 1
+        fi
+        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
+        wget -N -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/mordak-95/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
+            exit 1
+        fi
+    else
+        tag_version=$1
+        tag_version_numeric=${tag_version#v}
+        min_version="2.3.5"
+
+        if [[ "$(printf '%s\n' "$min_version" "$tag_version_numeric" | sort -V | head -n1)" != "$min_version" ]]; then
+            echo -e "${red}Please use a newer version (at least v2.3.5). Exiting installation.${plain}"
+            exit 1
+        fi
+
+        url="https://github.com/mordak-95/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
+        echo -e "Beginning to install x-ui $1"
+        wget -N -O /usr/local/x-ui-linux-$(arch).tar.gz ${url}
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
+            exit 1
+        fi
     fi
 
-    # Download dependencies
-    echo -e "${yellow}Downloading dependencies...${plain}"
-    go mod download
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to download dependencies${plain}"
-        exit 1
-    fi
-
-    # Build the application
-    echo -e "${yellow}Building x-ui...${plain}"
-    go build -o x-ui main.go
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to build x-ui${plain}"
-        exit 1
-    fi
-
-    # Create installation directory
     if [[ -e /usr/local/x-ui/ ]]; then
-        systemctl stop x-ui 2>/dev/null
+        systemctl stop x-ui
         rm /usr/local/x-ui/ -rf
     fi
 
-    mkdir -p /usr/local/x-ui
-    mkdir -p /usr/local/x-ui/bin
-
-    # Copy built binary
-    cp x-ui /usr/local/x-ui/
-    chmod +x /usr/local/x-ui/x-ui
-
-    # Download Xray binary (still need to download this as it's not part of the source)
-    echo -e "${yellow}Downloading Xray binary...${plain}"
-    xray_version="1.8.7"
-    wget -O /usr/local/x-ui/bin/xray-linux-$(arch).zip https://github.com/XTLS/Xray-core/releases/download/v${xray_version}/Xray-linux-$(arch).zip
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to download Xray binary${plain}"
-        exit 1
-    fi
-
-    # Unzip Xray binary
-    cd /usr/local/x-ui/bin
-    unzip -o xray-linux-$(arch).zip
-    rm xray-linux-$(arch).zip
-    chmod +x xray-linux-$(arch)
+    tar zxvf x-ui-linux-$(arch).tar.gz
+    rm x-ui-linux-$(arch).tar.gz -f
+    cd x-ui
+    chmod +x x-ui
 
     # Check the system's architecture and rename the file accordingly
     if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-        mv xray-linux-$(arch) xray-linux-arm
-        chmod +x xray-linux-arm
+        mv bin/xray-linux-$(arch) bin/xray-linux-arm
+        chmod +x bin/xray-linux-arm
     fi
 
-    # Copy service file
+    chmod +x x-ui bin/xray-linux-$(arch)
     cp -f x-ui.service /etc/systemd/system/
-
-    # Copy x-ui.sh script
-    cp -f x-ui.sh /usr/bin/x-ui
+    wget -O /usr/bin/x-ui https://raw.githubusercontent.com/mordak-95/3x-ui/main/x-ui.sh
+    chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
-
-    # Copy web assets
-    cp -r web /usr/local/x-ui/
-
     config_after_install
 
     systemctl daemon-reload
     systemctl enable x-ui
     systemctl start x-ui
-    echo -e "${green}x-ui built from source and installation finished, it is running now...${plain}"
+    echo -e "${green}x-ui ${tag_version}${plain} installation finished, it is running now..."
     echo -e ""
     echo -e "┌───────────────────────────────────────────────────────┐
 │  ${blue}x-ui control menu usages (subcommands):${plain}              │
@@ -262,4 +225,4 @@ build_and_install_x-ui() {
 
 echo -e "${green}Running...${plain}"
 install_base
-build_and_install_x-ui $1
+install_x-ui $1
