@@ -1,120 +1,136 @@
-# PostgreSQL Setup for 3x-ui
+ # PostgreSQL Setup Guide for 3x-ui
 
-This document explains how to set up PostgreSQL for the 3x-ui application.
+This guide explains how to configure PostgreSQL for use with the 3x-ui application.
 
 ## Prerequisites
 
-1. PostgreSQL server installed and running
-2. A database created for the application
-3. A user with appropriate permissions
+- PostgreSQL server installed and running
+- A database created for the application
+- A database user with appropriate permissions
 
-## Environment Variables
+## Installation Steps
 
-The application uses the following environment variables for PostgreSQL configuration:
+### 1. Install PostgreSQL
 
-### Option 1: Using a complete DSN string
 ```bash
-export XUI_POSTGRES_DSN="host=localhost port=5432 user=xui password=xui dbname=xui sslmode=disable"
+# Ubuntu/Debian
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# CentOS/RHEL
+sudo yum install postgresql postgresql-server
+sudo postgresql-setup initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 ```
 
-### Option 2: Using individual environment variables
+### 2. Create Database and User
+
+```bash
+# Switch to postgres user
+sudo -u postgres psql
+
+# Create database and user
+CREATE DATABASE xui;
+CREATE USER xui WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE xui TO xui;
+\c xui
+GRANT ALL ON SCHEMA public TO xui;
+\q
+```
+
+## Configure 3x-ui Service
+
+### 3. Edit Service File
+
+After installing 3x-ui, edit the `x-ui.service` file with the following command:
+
+```bash
+sudo nano /etc/systemd/system/x-ui.service
+```
+
+Add the following environment variables in the `[Service]` section:
+
+```ini
+[Service]
+# ... existing service configuration ...
+Environment="XUI_POSTGRES_HOST=localhost"
+Environment="XUI_POSTGRES_PORT=5432"
+Environment="XUI_POSTGRES_USER=xui"
+Environment="XUI_POSTGRES_PASSWORD=your_password"
+Environment="XUI_POSTGRES_DB=xui"
+# ... rest of service configuration ...
+```
+
+### 4. Set Environment Variables
+
+Set the Ubuntu environment variables with the following commands:
+
 ```bash
 export XUI_POSTGRES_HOST="localhost"
 export XUI_POSTGRES_PORT="5432"
 export XUI_POSTGRES_USER="xui"
-export XUI_POSTGRES_PASSWORD="xui"
+export XUI_POSTGRES_PASSWORD="your_password"
 export XUI_POSTGRES_DB="xui"
-export XUI_POSTGRES_SSLMODE="disable"
 ```
 
-## Database Setup
+### 5. Update Service
 
-1. **Create the database:**
-   ```sql
-   CREATE DATABASE xui;
-   ```
+```bash
+# Reload systemd daemon
+sudo systemctl daemon-reload
 
-2. **Create a user (optional, you can use an existing user):**
-   ```sql
-   CREATE USER xui WITH PASSWORD 'xui';
-   GRANT ALL PRIVILEGES ON DATABASE xui TO xui;
-   ```
+# Restart x-ui service
+sudo systemctl restart x-ui
 
-3. **Connect to the database and grant schema permissions:**
-   ```sql
-   \c xui
-   GRANT ALL ON SCHEMA public TO xui;
-   ```
+# Check service status
+sudo systemctl status x-ui
+```
 
-## Application Changes
-
-The following changes have been made to support PostgreSQL:
-
-1. **Database Driver**: Changed from SQLite to PostgreSQL driver
-2. **Connection**: Uses PostgreSQL connection string instead of file path
-3. **Database Operations**: 
-   - File-based backup/restore is not supported
-   - Use `pg_dump` and `pg_restore` for database operations
-4. **Configuration**: Added PostgreSQL-specific environment variables
-
-## Database Backup and Restore
-
-Since PostgreSQL doesn't use file-based databases like SQLite, you need to use PostgreSQL tools:
+## Backup and Restore
 
 ### Backup
+
 ```bash
+# Create backup
 pg_dump -h localhost -p 5432 -U xui -d xui > backup.sql
 ```
 
 ### Restore
+
 ```bash
+# Restore from backup file
 psql -h localhost -p 5432 -U xui -d xui < backup.sql
 ```
 
-## Migration from SQLite
-
-If you're migrating from SQLite to PostgreSQL:
-
-1. **Export data from SQLite:**
-   ```bash
-   sqlite3 x-ui.db .dump > sqlite_backup.sql
-   ```
-
-2. **Convert the SQLite dump to PostgreSQL format** (you may need to manually adjust some SQL syntax)
-
-3. **Import to PostgreSQL:**
-   ```bash
-   psql -h localhost -p 5432 -U xui -d xui < converted_backup.sql
-   ```
-
 ## Troubleshooting
 
-### Connection Issues
-- Ensure PostgreSQL is running: `sudo systemctl status postgresql`
-- Check if the database exists: `psql -l`
-- Verify user permissions: `psql -U xui -d xui -c "\du"`
+### Common Issues
 
-### Permission Issues
-- Make sure the user has proper permissions on the database
-- Check PostgreSQL logs: `tail -f /var/log/postgresql/postgresql-*.log`
+#### Connection Refused
+```bash
+# Check PostgreSQL status
+sudo systemctl status postgresql
 
-### SSL Issues
-- Set `XUI_POSTGRES_SSLMODE=disable` for development
-- For production, configure proper SSL certificates
+# Check port
+sudo netstat -tlnp | grep 5432
+```
 
-## Security Considerations
+#### Authentication Failed
+```bash
+# Check users
+sudo -u postgres psql -c "\du"
 
-1. **Use strong passwords** for the database user
-2. **Enable SSL** in production environments
-3. **Restrict network access** to the PostgreSQL server
-4. **Use environment variables** instead of hardcoded credentials
-5. **Regular backups** using `pg_dump`
+# Change password
+sudo -u postgres psql -c "ALTER USER xui PASSWORD 'new_password';"
+```
 
-## Performance Tuning
+#### Service Won't Start
+```bash
+# Check logs
+sudo journalctl -u x-ui -f
+```
 
-For better performance, consider:
+---
 
-1. **Connection pooling** (e.g., using PgBouncer)
-2. **Proper indexing** on frequently queried columns
-3. **Regular VACUUM** and ANALYZE operations
-4. **Appropriate memory settings** in postgresql.conf 
+**Note**: Replace `your_password` with a strong, unique password.
