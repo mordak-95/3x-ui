@@ -14,6 +14,7 @@ import (
 	"x-ui/util/crypto"
 	"x-ui/xray"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -131,7 +132,19 @@ func InitDB(dbPath string) error {
 	c := &gorm.Config{
 		Logger: gormLogger,
 	}
-	db, err = gorm.Open(sqlite.Open(dbPath), c)
+
+	pgHost := config.GetPostgresHost()
+	pgUser := config.GetPostgresUser()
+	pgPassword := config.GetPostgresPassword()
+	pgDBName := config.GetPostgresDBName()
+	pgPort := config.GetPostgresPort()
+
+	if pgHost != "" && pgUser != "" && pgPassword != "" && pgDBName != "" {
+		pgConn := "host=" + pgHost + " user=" + pgUser + " password=" + pgPassword + " dbname=" + pgDBName + " port=" + pgPort + " sslmode=disable"
+		db, err = gorm.Open(postgres.Open(pgConn), c)
+	} else {
+		db, err = gorm.Open(sqlite.Open(dbPath), c)
+	}
 	if err != nil {
 		return err
 	}

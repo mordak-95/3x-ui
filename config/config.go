@@ -73,3 +73,31 @@ func GetLogFolder() string {
 	}
 	return logFolderPath
 }
+
+func GetPostgresHost() string {
+	// return os.Getenv("XUI_PG_HOST")
+	return "dokploy.roshanbin.com"
+}
+
+func GetPostgresUser() string {
+	// return os.Getenv("XUI_PG_USER")
+	return "postgres"
+}
+
+func GetPostgresPassword() string {
+	// return os.Getenv("XUI_PG_PASSWORD")
+	return "dijpveapofaezb12"
+}
+
+func GetPostgresDBName() string {
+	// return os.Getenv("XUI_PG_DBNAME")
+	return "xui"
+}
+
+func GetPostgresPort() string {
+	// port := os.Getenv("XUI_PG_PORT")
+	// if port == "" {
+	// 	return "5432"
+	// }
+	return "5432"
+}
