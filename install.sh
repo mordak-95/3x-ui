@@ -193,7 +193,7 @@ install_x-ui() {
 
     chmod +x x-ui bin/xray-linux-$(arch)
     cp -f x-ui.service /etc/systemd/system/
-    wget -O /usr/bin/x-ui https://raw.githubusercontent.com/mordak-95/3x-ui/main/x-ui.sh
+    wget -O /usr/bin/x-ui --inet4-only https://raw.githubusercontent.com/mordak-95/3x-ui/main/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
     config_after_install
