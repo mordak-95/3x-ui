@@ -37,14 +37,35 @@ else
     echo -e "${green}Go is already installed.${plain}"
 fi
 
+# Determine source directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/main.go" ]]; then
+    # Running from project directory
+    SOURCE_DIR="$SCRIPT_DIR"
+    echo -e "${green}Using source files from current directory: $SOURCE_DIR${plain}"
+else
+    # Need to clone repository
+    echo -e "${yellow}Source files not found in current directory. Cloning repository...${plain}"
+    cd /tmp
+    if [[ -d "3x-ui" ]]; then
+        rm -rf 3x-ui
+    fi
+    git clone https://github.com/mordak-95/3x-ui.git
+    SOURCE_DIR="/tmp/3x-ui"
+    echo -e "${green}Repository cloned to: $SOURCE_DIR${plain}"
+fi
+
 # Build the project
 cd /usr/local/
 if [[ -d x-ui ]]; then
+    systemctl stop x-ui 2>/dev/null || true
     rm -rf x-ui
 fi
-cp -r $OLDPWD /usr/local/x-ui
+
+cp -r "$SOURCE_DIR" /usr/local/x-ui
 cd /usr/local/x-ui
 
+echo -e "${yellow}Building x-ui from source...${plain}"
 go mod tidy
 go build -o /usr/local/x-ui/x-ui main.go
 chmod +x /usr/local/x-ui/x-ui
@@ -72,3 +93,5 @@ systemctl enable x-ui
 systemctl restart x-ui
 
 echo -e "${green}x-ui installation from source finished and service started.${plain}"
+echo -e "${blue}Service status:${plain}"
+systemctl status x-ui --no-pager -l
