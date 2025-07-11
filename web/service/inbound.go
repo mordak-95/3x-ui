@@ -91,7 +91,7 @@ func (s *InboundService) getAllEmails() ([]string, error) {
 	err := db.Raw(`
 		SELECT client->>'email'
 		FROM inbounds,
-			jsonb_array_elements(inbounds.settings->'clients') AS client
+			jsonb_array_elements((inbounds.settings::jsonb)->'clients') AS client
 		`).Scan(&emails).Error
 	if err != nil {
 		return nil, err
@@ -1125,7 +1125,7 @@ func (s *InboundService) MigrationRemoveOrphanedTraffics() {
 		WHERE email NOT IN (
 			SELECT client->>'email'
 			FROM inbounds,
-				jsonb_array_elements(inbounds.settings->'clients') AS client
+				jsonb_array_elements((inbounds.settings::jsonb)->'clients') AS client
 		)
 	`)
 }
@@ -1792,7 +1792,7 @@ func (s *InboundService) GetClientTrafficByID(id string) ([]xray.ClientTraffic, 
 	err := db.Model(xray.ClientTraffic{}).Where(`email IN(
 		SELECT client->>'email' as email
 		FROM inbounds,
-	  	jsonb_array_elements(inbounds.settings->'clients') AS client
+	  	jsonb_array_elements((inbounds.settings::jsonb)->'clients') AS client
 		WHERE
 	  	client->>'id' IN (?)
 		)`, id).Find(&traffics).Error
@@ -1979,8 +1979,8 @@ func (s *InboundService) MigrationRequirements() {
 	err = tx.Raw(`select id, port, stream_settings
 	from inbounds
 	WHERE protocol in ('vmess','vless','trojan')
-	  AND stream_settings->>'security' = 'tls'
-	  AND stream_settings->'tlsSettings'->'settings'->'domains' IS NOT NULL`).Scan(&externalProxy).Error
+	  AND (stream_settings::jsonb)->>'security' = 'tls'
+	  AND (stream_settings::jsonb)->'tlsSettings'->'settings'->'domains' IS NOT NULL`).Scan(&externalProxy).Error
 	if err != nil || len(externalProxy) == 0 {
 		return
 	}
