@@ -76,27 +76,27 @@ func GetPostgreSQLDSN() string {
 	// Build DSN from individual environment variables
 	host := os.Getenv("XUI_POSTGRES_HOST")
 	if host == "" {
-		host = "93.126.18.78"
+		host = ""
 	}
 
 	port := os.Getenv("XUI_POSTGRES_PORT")
 	if port == "" {
-		port = "5432"
+		port = ""
 	}
 
 	user := os.Getenv("XUI_POSTGRES_USER")
 	if user == "" {
-		user = "postgres"
+		user = ""
 	}
 
 	password := os.Getenv("XUI_POSTGRES_PASSWORD")
 	if password == "" {
-		password = "ebitfeweb6xcij3o"
+		password = ""
 	}
 
 	dbname := os.Getenv("XUI_POSTGRES_DB")
 	if dbname == "" {
-		dbname = "xui"
+		dbname = ""
 	}
 
 	sslmode := os.Getenv("XUI_POSTGRES_SSLMODE")
