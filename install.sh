@@ -11,6 +11,7 @@ plain='\033[0m'
 # Check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
 
+
 # Check OS
 if [[ -f /etc/os-release ]]; then
     source /etc/os-release
